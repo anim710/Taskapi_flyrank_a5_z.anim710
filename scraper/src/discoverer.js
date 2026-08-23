@@ -5,21 +5,22 @@ import { CONFIG } from './config.js';
 export async function discoverBooks(maxPages = CONFIG.MAX_CATALOGUE_PAGES) {
   let currentUrl = CONFIG.START_URL;
   let pageNum = 1;
-  const bookUrls = [];
+  const discoveredItems = [];
 
   while (currentUrl && pageNum <= maxPages) {
     const cacheFileName = `catalogue-page-${pageNum}.html`;
     const { html } = await fetchWithCache(currentUrl, cacheFileName);
     const $ = cheerio.load(html);
 
-    // Extract book links and resolve relative -> absolute URLs
     $('article.product_pod h3 a').each((_, el) => {
       const relativeHref = $(el).attr('href');
       const absoluteUrl = new URL(relativeHref, currentUrl).href;
-      bookUrls.push(absoluteUrl);
+      discoveredItems.push({
+        productUrl: absoluteUrl,
+        sourcePage: currentUrl
+      });
     });
 
-    // Extract next page link
     const nextHref = $('.pager .next a').attr('href');
     if (nextHref) {
       currentUrl = new URL(nextHref, currentUrl).href;
@@ -29,11 +30,19 @@ export async function discoverBooks(maxPages = CONFIG.MAX_CATALOGUE_PAGES) {
     }
   }
 
-  const uniqueUrls = [...new Set(bookUrls)];
+  // Deduplicate by productUrl
+  const uniqueItemsMap = new Map();
+  for (const item of discoveredItems) {
+    if (!uniqueItemsMap.has(item.productUrl)) {
+      uniqueItemsMap.set(item.productUrl, item);
+    }
+  }
+
+  const uniqueItems = Array.from(uniqueItemsMap.values());
 
   console.log(
-    `catalogue_pages=${pageNum - 1}, discovered=${bookUrls.length}, unique_urls=${uniqueUrls.length}`
+    `catalogue_pages=${pageNum - 1}, discovered=${discoveredItems.length}, unique_urls=${uniqueItems.length}`
   );
 
-  return uniqueUrls;
+  return uniqueItems;
 }
