@@ -1,18 +1,28 @@
 import { discoverBooks } from './discoverer.js';
 import { extractBookDetail } from './extractor.js';
+import { normalizeAndValidate } from './validator.js';
+import { saveRecords } from './storage.js';
 
 async function main() {
   const booksToVisit = await discoverBooks();
-  const rawRecords = [];
+  const validRecords = [];
+  const errorRecords = [];
 
   for (const { productUrl, sourcePage } of booksToVisit) {
     const rawRecord = await extractBookDetail(productUrl, sourcePage);
-    rawRecords.push(rawRecord);
+    const validation = normalizeAndValidate(rawRecord);
+
+    if (validation.success) {
+      validRecords.push(validation.data);
+    } else {
+      errorRecords.push(validation);
+    }
   }
 
-  console.log(`detail_pages=${rawRecords.length}`);
-  console.log('Sample raw record:');
-  console.log(JSON.stringify(rawRecords[0], null, 2));
+  const { savedCount, errorCount } = await saveRecords(validRecords, errorRecords);
+
+  console.log(`Validated: ${validRecords.length}, Errors: ${errorCount}`);
+  console.log(`Stored in books.json: ${savedCount} records`);
 }
 
 main();
