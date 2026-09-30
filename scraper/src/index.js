@@ -1,3 +1,4 @@
+// src/index.js
 import { discoverBooks } from './discoverer.js';
 import { extractBookDetail } from './extractor.js';
 import { normalizeAndValidate } from './validator.js';
@@ -20,12 +21,6 @@ async function main() {
 
   const booksToVisit = await discoverBooks();
 
-  // Inject 1 made-up broken URL to test resilience (Stage 5 requirement)
-  booksToVisit.push({
-    productUrl: 'https://books.toscrape.com/catalogue/non-existent-book-12345/index.html',
-    sourcePage: 'https://books.toscrape.com/catalogue/page-1.html'
-  });
-
   for (const { productUrl, sourcePage } of booksToVisit) {
     try {
       const rawRecord = await extractBookDetail(productUrl, sourcePage);
@@ -47,7 +42,7 @@ async function main() {
   stats.validRecords = savedCount;
 
   const report = await generateReport(stats);
-  console.log('\n--- RUN REPORT ---');
+  console.log('\n--- FINAL RUN REPORT ---');
   console.log(JSON.stringify(report, null, 2));
 }
 
